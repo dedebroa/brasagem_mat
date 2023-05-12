@@ -2,6 +2,7 @@
 
 <div align="justify">Matminer se trata de uma biblioteca que, até o momento, tem se mostrado bastante útil para nós. Ela permite: acessar bases de dados, criar bases de dados e manipular os dados e features. Explicações mais contundentes acerca desse tema podem ser encontradas nos própios notebooks aqui disponíveis.</div>
 <br>
+
 > <hr>
 
 **DOCUMENTOS DISPONÍVEIS AQUI**
