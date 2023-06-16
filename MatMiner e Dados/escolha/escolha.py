@@ -1,35 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from collections import Counter
-
-from matminer.datasets import (
-    get_available_datasets,
-    get_dataset_column_description,
-    get_dataset_columns,
-    get_dataset_description,
-)
+import os
+from matminer.datasets import load_dataset
+import pandas as pd
+import pickle
 
 
-def dados_base():
-    datasets_dicionario = {}
-    datasets = get_available_datasets(
-        print_format=None  # type: ignore
-    )  # mostra os datasets disponiveis
-
-    todas_colunas = []
-    dataset_nome_colunas = []
-    for dataset in datasets:
-        datasets_dicionario[dataset] = {"descrição": get_dataset_description(dataset)}
-        colunas_dataset = get_dataset_columns(dataset)
-        for coluna in colunas_dataset:
-            todas_colunas.append(coluna)
-            dataset_nome_colunas.append(dataset)
-            descrição = get_dataset_column_description(dataset, coluna)
-            datasets_dicionario[dataset][coluna] = descrição
-    return datasets_dicionario, datasets, todas_colunas, dataset_nome_colunas
+with open("dados.pickle", "rb") as arquivo:
+    lista_dados_base = pickle.load(arquivo)
 
 
-datasets_dicionario, datasets, todas_colunas, dataset_nome_colunas = dados_base()
+datasets_dicionario, datasets, todas_colunas, dataset_nome_colunas = lista_dados_base
 
 
 def dataset_selecionado(event):
@@ -59,10 +41,10 @@ def dataset_selecionado(event):
 
 
 def item_selecionado(event):
-    index = colunas_selecao.curselection()
-    if index:
+    posicao = colunas_selecao.curselection()
+    if posicao:
         if escolha_datasets.get() == "Todos":
-            dataset = dataset_nome_colunas[index[0]]
+            dataset = dataset_nome_colunas[posicao[0]]
             descrição_dataset_text.configure(state="normal")
 
             descrição_dataset_text.delete("1.0", tk.END)
@@ -79,7 +61,7 @@ def item_selecionado(event):
         else:
             dataset = escolha_datasets.get()
 
-        coluna = colunas_selecao.get(index[0])
+        coluna = colunas_selecao.get(posicao[0])
         coluna_descricao_text.configure(state="normal")
         coluna_descricao_text.delete("1.0", tk.END)
         coluna_descricao_text.insert(
@@ -149,12 +131,12 @@ def palavra_chave(event):
 
 def adicionar_item():
     global lista_colunas_selecionadas
-    index = colunas_selecao.curselection()
-    if index:
+    posicao = colunas_selecao.curselection()
+    if posicao:
         dataset = escolha_datasets.get()
         if dataset == "Todos":
-            dataset = dataset_nome_colunas[index[0]]
-        coluna = colunas_selecao.get(index[0])
+            dataset = dataset_nome_colunas[posicao[0]]
+        coluna = colunas_selecao.get(posicao[0])
         lista_colunas_selecionadas.append((coluna, dataset))
     botao_remover.config(state="active")
     botao_adicionar.config(state="disabled")
@@ -162,12 +144,12 @@ def adicionar_item():
 
 def remover_item():
     global lista_colunas_selecionadas
-    index = colunas_selecao.curselection()
-    if index:
+    posicao = colunas_selecao.curselection()
+    if posicao:
         dataset = escolha_datasets.get()
         if dataset == "Todos":
-            dataset = dataset_nome_colunas[index[0]]
-        coluna = colunas_selecao.get(index[0])
+            dataset = dataset_nome_colunas[posicao[0]]
+        coluna = colunas_selecao.get(posicao[0])
         lista_colunas_selecionadas.remove((coluna, dataset))
     botao_remover.config(state="disabled")
     botao_adicionar.config(state="active")
@@ -184,7 +166,7 @@ def mostrar_selecionadas():
     explicação.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky=tk.NSEW)
     explicação.insert(
         tk.END,
-        "O botão remover vai remover as colunas selecionadas, o botão criar vai criar um dataset com todas as colunas, idependente se selecionadas ou não.",
+        "O botão remover vai remover as colunas selecionadas, o botão criar vai criar um dataset com o nome dos datasets na primeira linha e o nome de cada coluna do mesmo nas colunas subsequentes.",
     )
     explicação.configure(state="disabled")
 
@@ -205,57 +187,69 @@ def mostrar_selecionadas():
         selecao = lista.curselection()
         if selecao:
             # Exibir os itens selecionados
-            for index in reversed(selecao):
-                lista_colunas_selecionadas.remove(lista_copia[index])
-                lista.delete(index)
+            for posicao in reversed(selecao):
+                lista_colunas_selecionadas.remove(lista_copia[posicao])
+                lista.delete(posicao)
             botao_remover_pop_up.config(state=tk.DISABLED)
 
-    def importar_dados():
-        print("indo")
+    # Ideia para juntar dados
+    # def juntar_dados():
+    #     if lista_colunas_selecionadas != []:
+    #         datasets = set(dado[1] for dado in lista_colunas_selecionadas)
+    #         colunas_datasets = []
+    #         colunas_dataset_total = []
+    #         for dataset in datasets:
+    #             colunas_datasets.append((get_dataset_columns(dataset), dataset))
+    #             colunas_dataset_total += get_dataset_columns(dataset)
+    #         # Obtém o item mais comum e sua contagem
+    #         contador = Counter(colunas_dataset_total)
+    #         coluna_mais_comum = contador.most_common(1)[0][0]
+    #         print(coluna_mais_comum)
+    #         dataset_faltantes = []
+    #         for colunas_e_dataset in colunas_datasets:
+    #             if coluna_mais_comum == "formula":
+    #                 if (
+    #                     coluna_mais_comum not in colunas_e_dataset[0]
+    #                     and "composition" not in colunas_e_dataset[0]
+    #                 ):
+    #                     dataset_faltantes.append(colunas_e_dataset[1])
+    #             elif coluna_mais_comum == "composition":
+    #                 if (
+    #                     coluna_mais_comum not in colunas_e_dataset[0]
+    #                     and "formula" not in colunas_e_dataset[0]
+    #                 ):
+    #                     dataset_faltantes.append(colunas_e_dataset[1])
+    #             else:
+    #                 if coluna_mais_comum not in colunas_e_dataset[0]:
+    #                     dataset_faltantes.append(colunas_e_dataset[1])
 
-    def juntar_dados():
-        if lista_colunas_selecionadas != []:
-            datasets = set(dado[1] for dado in lista_colunas_selecionadas)
-            colunas_datasets = []
-            colunas_dataset_total = []
-            for dataset in datasets:
-                colunas_datasets.append((get_dataset_columns(dataset), dataset))
-                colunas_dataset_total += get_dataset_columns(dataset)
-            # Obtém o item mais comum e sua contagem
-            contador = Counter(colunas_dataset_total)
-            coluna_mais_comum = contador.most_common(1)[0][0]
-            print(coluna_mais_comum)
-            dataset_faltantes = []
-            for colunas_e_dataset in colunas_datasets:
-                if coluna_mais_comum == "formula":
-                    if (
-                        coluna_mais_comum not in colunas_e_dataset[0]
-                        and "composition" not in colunas_e_dataset[0]
-                    ):
-                        dataset_faltantes.append(colunas_e_dataset[1])
-                elif coluna_mais_comum == "composition":
-                    if (
-                        coluna_mais_comum not in colunas_e_dataset[0]
-                        and "formula" not in colunas_e_dataset[0]
-                    ):
-                        dataset_faltantes.append(colunas_e_dataset[1])
-                else:
-                    if coluna_mais_comum not in colunas_e_dataset[0]:
-                        dataset_faltantes.append(colunas_e_dataset[1])
+    #         if dataset_faltantes != []:
+    #             messagebox.showerror(
+    #                 "Erro",
+    #                 f'Esses datasets {dataset_faltantes} não possuem a coluna "{coluna_mais_comum}", que é a coluna que mais aparece nos datastes selecionados, por equanto não tem solução, recomendamos remover da escolha as colunas destes datastes.',
+    #             )
+    #         else:
+    #             criar = messagebox.askyesno(
+    #                 "Dataset", "Certeza que deseja criar o dataset com essas colunas?"
+    #             )
+    #             if criar:
+    #                 dados = importar_dados()
+    #     else:
+    #         messagebox.showerror("Erro", "Ainda não foi selecionado colunas.")
 
-            if dataset_faltantes != []:
-                messagebox.showerror(
-                    "Erro",
-                    f'Esses datasets {dataset_faltantes} não possuem a coluna "{coluna_mais_comum}", que é a coluna que mais aparece nos datastes selecionados, por equanto não tem solução, recomendamos remover da escolha as colunas destes datastes.',
-                )
-            else:
-                criar = messagebox.askyesno(
-                    "Dataset", "Certeza que deseja criar o dataset com essas colunas?"
-                )
-                if criar:
-                    dados = importar_dados()
-        else:
-            messagebox.showerror("Erro", "Ainda não foi selecionado colunas.")
+    def baixar():
+        """Cria e exporta um dataset com os nomes do dataset na primeira coluna e as colunas de cada dataset colunas seguintes, dentro da mesma linha."""
+        dicionario = {}
+        for coluna_selecionada, dataset_selecionado in lista_colunas_selecionadas:
+            try:
+                dicionario[dataset_selecionado].append(coluna_selecionada)
+            except:
+                dicionario[dataset_selecionado] = []
+                dicionario[dataset_selecionado].append(dataset_selecionado)
+                dicionario[dataset_selecionado].append(coluna_selecionada)
+
+        dataset_selecionado = pd.DataFrame.from_dict(dicionario, orient="index")
+        dataset_selecionado.to_csv("Dados.csv", index=False)
 
     def on_select(event):
         # Verifica se há algum item selecionado
@@ -270,7 +264,7 @@ def mostrar_selecionadas():
     botao_remover_pop_up.grid(row=2, column=0, padx=10, pady=10)
     botao_remover_pop_up.config(state=tk.DISABLED)
 
-    botao_criar_pop_up = tk.Button(popup, text="Criar", command=juntar_dados)
+    botao_criar_pop_up = tk.Button(popup, text="Baixar", command=baixar)  # type: ignore
     botao_criar_pop_up.grid(row=2, column=1, padx=10, pady=10)
 
     botao_cancelar_pop_up = tk.Button(popup, text="Cancelar", command=popup.destroy)
