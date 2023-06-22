@@ -1,4 +1,6 @@
 """Vai ser utilizada unicamente para criar e traduzir os dados bases e depois enviar para um arquivo pickle."""
+
+
 import pickle
 from deep_translator import GoogleTranslator
 
